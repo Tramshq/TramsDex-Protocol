@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT+WTFPL
 
 pragma solidity 0.6.12;
 
