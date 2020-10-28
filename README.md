@@ -1,9 +1,10 @@
 # TramsDex  
 
-TramsDex is live and minting of TRAMS token has started from ethereum block number 11142000.
-TRAMS-ETH pair has the highest allocation factor, so liquidity providers of this pool will get more rewards.
-Official Website- https://trams.io. 
-Feel free to read the code. More details coming soon.
+- TramsDex is live and minting of TRAMS token has started from ethereum block number 11142000.
+- TRAMS-ETH pair has the highest allocation factor, so liquidity providers of this pool will get more rewards.
+- Official Website- https://trams.io. 
+- Feel free to read the code. More details coming soon.
+
 
 ## Deployed Contracts
 
