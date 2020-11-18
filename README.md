@@ -11,7 +11,7 @@
 ## Deployed Contracts
 
 - TramsToken - https://etherscan.io/token/0x7afA2BbC06Dad88487b5171EA2bcDF938A6b7Ff9
-- TramsMaster - https://etherscan.io/address/0xb099f783452810eb6436bc6d8e3b5ea5db9f76c0#code
+- TramsMaster - https://etherscan.io/address/0xb099f783452810eb6436bc6d8e3b5ea5db9f76c0
 
 
 ## License
