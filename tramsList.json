@@ -344,11 +344,43 @@
         "symbol": "YAM",
         "decimals": 18,
         "logoURI": "https://assets.coingecko.com/coins/images/12530/small/YAM-icon.png?1600495536"
+      },
+      {
+        "address": "0x9f5b4f2C8f49A117c1325dF127b4eeB7cF627187",
+        "chainId": 1,
+        "name": "MediLiVes Token",
+        "symbol": "MLIV",
+        "decimals": 18,
+        "logoURI": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/SNice.svg/220px-SNice.svg.png"
+      },
+      {
+        "address": "0x164F64eF2A44444743c5472FA68fb3784060D286",
+        "chainId": 1,
+        "name": "T8Coin",
+        "symbol": "T8C",
+        "decimals": 18,
+        "logoURI": "https://etherscan.io/token/images/t8coin_28.jpg"
+      },
+      {
+        "address": "0x3E713B8eFBB62C214412aDF4aD950C385e0De0a8",
+        "chainId": 1,
+        "name": "T8EX Token",
+        "symbol": "T8EX",
+        "decimals": 18,
+        "logoURI": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/SNice.svg/220px-SNice.svg.png"
+      },
+      {
+        "address": "0x08EA14017E135CAC7FB50a1834401122B9941033",
+        "chainId": 1,
+        "name": "T8T Coin",
+        "symbol": "T8T",
+        "decimals": 18,
+        "logoURI": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/SNice.svg/220px-SNice.svg.png"
       }
     ],
     "version": {
       "major": 1,
-      "minor": 0,
+      "minor": 1,
       "patch": 0
     }
   }
