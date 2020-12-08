@@ -358,7 +358,7 @@
         "chainId": 1,
         "name": "T8Coin",
         "symbol": "T8C",
-        "decimals": 18,
+        "decimals": 3,
         "logoURI": "https://etherscan.io/token/images/t8coin_28.jpg"
       },
       {
@@ -374,13 +374,21 @@
         "chainId": 1,
         "name": "T8T Coin",
         "symbol": "T8T",
-        "decimals": 18,
+        "decimals": 10,
         "logoURI": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/SNice.svg/220px-SNice.svg.png"
+      },
+      {
+        "address": "0x72dd4b6bd852a3aa172be4d6c5a6dbec588cf131",
+        "chainId": 1,
+        "name": "NAGA Coin",
+        "symbol": "NGC",
+        "decimals": 18,
+        "logoURI": "https://etherscan.io/token/images/nagacoin_28_2.png"
       }
     ],
     "version": {
       "major": 1,
       "minor": 1,
-      "patch": 0
+      "patch": 1
     }
   }
