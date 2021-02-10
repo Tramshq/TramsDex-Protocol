@@ -384,10 +384,18 @@
         "symbol": "NGC",
         "decimals": 18,
         "logoURI": "https://etherscan.io/token/images/nagacoin_28_2.png"
+      },
+      {
+        "address": "0xF583Ae90b767183CA4c3F5087E2ee23892fabAd5",
+        "chainId": 1,
+        "name": "ETHFUND",
+        "symbol": "ETHF",
+        "decimals": 18,
+        "logoURI": "http://ethfund.io/icon.png"
       }
     ],
     "version": {
-      "major": 2,
+      "major": 3,
       "minor": 1,
       "patch": 1
     }
