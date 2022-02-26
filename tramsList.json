@@ -10,6 +10,14 @@
     "timestamp": "2020-11-02T00:00:00+00:00",
     "tokens": [
       {
+        "address": "0xbA5E3525148EF7b69DBAf282cB0Ad58Cb66ca283",
+        "chainId": 1,
+        "name": "TiENWORLD Nati Token",
+        "symbol": "NATI",
+        "decimals": 18,
+        "logoURI": "https://nati.tien.world/assets/nati.png"
+      },
+      {
         "address": "0x7afa2bbc06dad88487b5171ea2bcdf938a6b7ff9",
         "chainId": 1,
         "name": "TramsToken",
@@ -404,7 +412,7 @@
         
     ],
     "version": {
-      "major": 4,
+      "major": 5,
       "minor": 1,
       "patch": 1
     }
