@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TramsDex Protocol - Pool Migration Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        trams: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            300: '#fda4af',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            800: '#9f1239',
+                            900: '#881337',
+                            950: '#4c0519',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Ethers.js v5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" type="application/javascript"></script>
+    <style>
+        /* Smooth scrolling and animations */
+        html {
+            color-scheme: dark;
+        }
+        html:not(.dark) {
+            color-scheme: light;
+        }
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        html.dark ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+    <script>
+        // Apply saved theme before paint to avoid FOUC. Defaults to dark.
+        (function () {
+            try {
+                const saved = localStorage.getItem('tramsdex-theme');
+                const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                const theme = saved || (prefersLight ? 'light' : 'dark');
+                if (theme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                } else {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-[#030712] dark:text-gray-100 min-h-screen font-sans antialiased selection:bg-trams-500 selection:text-white transition-colors duration-300">
+
+    <div id="app" class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-200 dark:border-gray-900 pb-6 mb-8 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="bg-gradient-to-tr from-trams-600 to-rose-500 p-3 rounded-2xl shadow-xl shadow-trams-500/20 dark:shadow-trams-950/40 border border-trams-500/20">
+                    <img src="https://raw.githubusercontent.com/Tramshq/TramsDex-Protocol/master/trams.png" alt="Trams Logo" class="h-9 w-9 object-contain" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23ffffff%22><path d=%22M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 6h-4v2h4v2h-4v2h4v2H9V7h6v2z%22/></svg>'">
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-3xl font-black tracking-tight text-gray-900 dark:text-white">
+                            TramsDex <span class="text-transparent bg-clip-text bg-gradient-to-r from-trams-500 dark:from-trams-400 to-rose-500">Protocol</span>
+                        </h1>
+                        <span class="text-[10px] font-bold text-trams-600 dark:text-trams-400 bg-trams-50 dark:bg-trams-950/50 border border-trams-200 dark:border-trams-900/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider">v1.3.0</span>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Interactive Yield Farm Pool Explorer & Liquidity Migration Tracker</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+            <button id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark theme" class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 px-3.5 py-2.5 rounded-2xl shadow-inner hover:border-gray-300 dark:hover:border-gray-700 active:scale-95 transition-all text-sm font-bold text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white flex items-center gap-2">
+                <i id="theme-icon" class="fa-solid fa-sun"></i>
+                <span id="theme-label" class="text-xs hidden sm:inline">Light</span>
+            </button>
+            <div class="flex items-center gap-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 px-4 py-2.5 rounded-2xl shadow-inner">
+                <span class="relative flex h-3.5 w-3.5">
+                    <span id="status-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span id="status-dot" class="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500"></span>
+                </span>
+                <span id="network-text" class="text-sm font-bold text-gray-600 dark:text-gray-300">Offline / Static Cache</span>
+                <button id="toggle-live-btn" onclick="toggleLiveMode()" class="ml-2 px-3.5 py-1.5 bg-trams-600 hover:bg-trams-500 active:scale-95 hover:shadow-lg hover:shadow-trams-600/20 transition-all text-xs font-bold rounded-xl text-white flex items-center gap-1">
+                    <i class="fa-solid fa-wifi"></i> Go Live
+                </button>
+            </div>
+            </div>
+        </header>
+
+        <!-- Metrics Overview Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-800 transition duration-300 shadow-lg shadow-gray-200/50 dark:shadow-black/20">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Pools</div>
+                <div class="text-4xl font-black text-gray-900 dark:text-white mt-2" id="stat-total-pools">15</div>
+                <div class="absolute right-4 bottom-3 text-gray-100 dark:text-gray-900 group-hover:text-trams-100 dark:group-hover:text-trams-950 transition duration-300 text-5xl pointer-events-none"><i class="fa-solid fa-cubes"></i></div>
+            </div>
+            <div class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-800 transition duration-300 shadow-lg shadow-gray-200/50 dark:shadow-black/20">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Alloc Points</div>
+                <div class="text-4xl font-black text-trams-600 dark:text-trams-500 mt-2" id="stat-total-alloc">31,300</div>
+                <div class="absolute right-4 bottom-3 text-gray-100 dark:text-gray-900 group-hover:text-trams-100 dark:group-hover:text-trams-950 transition duration-300 text-5xl pointer-events-none"><i class="fa-solid fa-chart-line"></i></div>
+            </div>
+            <div class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-800 transition duration-300 shadow-lg shadow-gray-200/50 dark:shadow-black/20">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Migrated Pools</div>
+                <div class="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2" id="stat-migrated-pools">14 <span class="text-xs font-normal text-gray-500">/ 15</span></div>
+                <div class="absolute right-4 bottom-3 text-gray-100 dark:text-gray-900 group-hover:text-trams-100 dark:group-hover:text-trams-950 transition duration-300 text-5xl pointer-events-none"><i class="fa-solid fa-truck-ramp-box"></i></div>
+            </div>
+            <div class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 p-5 rounded-2xl relative overflow-hidden group hover:border-gray-300 dark:hover:border-gray-800 transition duration-300 shadow-lg shadow-gray-200/50 dark:shadow-black/20">
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Reward Pools</div>
+                <div class="text-4xl font-black text-blue-600 dark:text-blue-400 mt-2" id="stat-reward-pools">10 <span class="text-xs font-normal text-gray-500">/ 15</span></div>
+                <div class="absolute right-4 bottom-3 text-gray-100 dark:text-gray-900 group-hover:text-trams-100 dark:group-hover:text-trams-950 transition duration-300 text-5xl pointer-events-none"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
+            </div>
+        </div>
+
+        <!-- Controls (Search & Filters) -->
+        <div class="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white/80 dark:bg-gray-950/80 border border-gray-200 dark:border-gray-900 p-4 rounded-2xl mb-8 shadow-md">
+            <div class="relative w-full lg:w-96">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="search-input" onkeyup="renderPools()" placeholder="Search by PID, address, name, or symbol..." class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-trams-500/50 focus:border-trams-500 transition duration-300">
+            </div>
+            <div class="flex flex-wrap gap-2 w-full lg:w-auto">
+                <button onclick="setFilter('all')" id="filter-all" class="px-4 py-2 bg-trams-600 hover:bg-trams-500 text-white text-xs font-bold rounded-xl transition duration-300">All Pools</button>
+                <button onclick="setFilter('active')" id="filter-active" class="px-4 py-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xs font-bold rounded-xl transition duration-300">Active Rewards</button>
+                <button onclick="setFilter('migrated')" id="filter-migrated" class="px-4 py-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xs font-bold rounded-xl transition duration-300">Migrated</button>
+                <button onclick="setFilter('inactive')" id="filter-inactive" class="px-4 py-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xs font-bold rounded-xl transition duration-300">Zero Reward</button>
+            </div>
+        </div>
+
+        <!-- Main Pool Grid -->
+        <div id="pools-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamically populated card structures will land here -->
+        </div>
+        
+    </div>
+
+    <!-- Interactive Detail Modal -->
+    <div id="pool-modal" class="hidden fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm transition-all duration-300">
+        <div class="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative transform transition-all scale-95 duration-300">
+            <!-- Close button -->
+            <button onclick="closeModal()" class="absolute right-5 top-5 text-gray-400 hover:text-gray-900 dark:hover:text-white transition duration-300 p-1 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Modal Content -->
+            <div class="p-8">
+                <span class="text-xs font-extrabold text-trams-600 dark:text-trams-500 uppercase tracking-widest block mb-1" id="modal-subtitle">Pool Profile</span>
+                <h2 class="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-2 mb-6" id="modal-title">
+                    TRAMS LP
+                </h2>
+
+                <!-- Visual Migration Timeline Flowchart -->
+                <div class="bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800/80 p-5 rounded-2xl mb-6">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-4 text-center">Liquidity Migration visualizer</span>
+                    <div class="flex flex-col items-center gap-2">
+                        
+                        <!-- Source Pool Block -->
+                        <div class="w-full bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-850 p-3 rounded-xl text-center shadow">
+                            <span class="text-[9px] uppercase font-bold text-gray-500 dark:text-gray-400 tracking-wider">Legacy Pool</span>
+                            <div class="font-extrabold text-sm text-gray-700 dark:text-gray-300 mt-1 flex items-center justify-center gap-1.5" id="modal-src">
+                                <i class="fa-solid fa-piggy-bank text-gray-500"></i> Uniswap V2 LP Pair
+                            </div>
+                        </div>
+                        
+                        <!-- Migration Action Flow Indicator -->
+                        <div class="text-trams-500 animate-bounce py-1 flex flex-col items-center">
+                            <i class="fa-solid fa-circle-arrow-down text-lg"></i>
+                            <span class="text-[8px] uppercase font-bold text-gray-500 tracking-widest mt-0.5">TramsMaster Migrated</span>
+                        </div>
+                        
+                        <!-- Target Pool Block -->
+                        <div class="w-full bg-trams-50 dark:bg-trams-950/20 border border-trams-200 dark:border-trams-900/50 p-3 rounded-xl text-center shadow">
+                            <span class="text-[9px] uppercase font-bold text-trams-600 dark:text-trams-400 tracking-wider">Protocol Farm Pool</span>
+                            <div class="font-extrabold text-sm text-gray-900 dark:text-white mt-1 flex items-center justify-center gap-1.5" id="modal-dst">
+                                <i class="fa-solid fa-fire text-trams-500"></i> TramsDex Native LP Pool
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parameters Table List -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-900 pb-3">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold">LP Token Contract Address</span>
+                        <span class="text-xs font-mono text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-800 transition duration-300 flex items-center gap-1.5 select-all" id="modal-lp-addr" onclick="copyAddress()">
+                            0x... <i class="fa-regular fa-copy text-[10px] text-gray-500"></i>
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-900 pb-3">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Governance Alloc Weight</span>
+                        <span class="text-xs font-bold text-gray-900 dark:text-gray-200" id="modal-alloc">30,000 AP</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-900 pb-3">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Accumulated Rewards Factor</span>
+                        <span class="text-xs font-mono text-gray-700 dark:text-gray-300" id="modal-acc-trams">706696251211733</span>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-gray-100 dark:border-gray-900 pb-3">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold">Last Block Distributed</span>
+                        <span class="text-xs font-bold text-gray-900 dark:text-gray-200" id="modal-last-block">12059703</span>
+                    </div>
+                    <div class="flex justify-between items-center pb-3">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold">On-Chain Ledger</span>
+                        <a href="#" target="_blank" id="modal-etherscan-link" class="text-xs font-bold text-trams-600 dark:text-trams-500 hover:text-trams-500 dark:hover:text-trams-400 hover:underline flex items-center gap-1 bg-trams-50 dark:bg-trams-950/40 border border-trams-200 dark:border-trams-900/50 px-3 py-1.5 rounded-xl">
+                            Etherscan Address <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Pool Assets & Migration Balances Section -->
+                <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-900">
+                    <h3 class="text-xs font-extrabold text-trams-600 dark:text-trams-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-scale-balanced"></i> Pool Assets & reserves
+                    </h3>
+                    <div id="modal-assets-loading" class="text-xs text-gray-500 py-4 text-center hidden">
+                        <i class="fa-solid fa-spinner animate-spin text-trams-500 text-lg mb-2 block"></i> Loading on-chain balances...
+                    </div>
+                    <div id="modal-assets-container" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Legacy reserves -->
+                            <div class="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 p-4 rounded-2xl">
+                                <span class="text-[9px] uppercase font-bold text-gray-500 block mb-2">Previous Pool (Uni V2)</span>
+                                <div id="modal-legacy-reserves" class="space-y-1 text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    <span class="text-gray-500 text-[10px]">Connect live to sync</span>
+                                </div>
+                            </div>
+                            <!-- Current reserves -->
+                            <div class="bg-trams-50 dark:bg-trams-950/10 border border-trams-200 dark:border-trams-900/30 p-4 rounded-2xl">
+                                <span class="text-[9px] uppercase font-bold text-trams-600 dark:text-trams-400 block mb-2">New Pool (TramsDex)</span>
+                                <div id="modal-current-reserves" class="space-y-1 text-xs font-bold text-gray-900 dark:text-white">
+                                    <span class="text-gray-500 text-[10px]">Connect live to sync</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Blocks -->
+    <script>
+        const TRAMS_MASTER_ADDRESS = "0xb099f783452810eb6436bc6d8e3b5ea5db9f76c0";
+        const TRAMS_TOKEN_ADDRESS = "0x7afa2bbc06dad88487b5171ea2bcdf938a6b7ff9";
+        const PUBLIC_RPC_URL = "https://ethereum-rpc.publicnode.com";
+
+        // Pre-fetched fallback dataset for instant rendering and offline usability
+        const PRE_CACHED_POOLS = [
+            { pid: 0, lpToken: "0xbbb26dd2110f5fc0e69ffd3fa3d5f840147a706d", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 30000, lastRewardBlock: 12059703, accTramsPerShare: "706696251211733" },
+            { pid: 1, lpToken: "0x7e28895e2234394f21e931565007793c7446c4eb", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 0, lastRewardBlock: 11384627, accTramsPerShare: "38576960723680165313" },
+            { pid: 2, lpToken: "0xd3bf876c1497a2b1285bbf881f0f3bcdc4c5b4fc", name: "Trams LP Token (DAI-TRAMS)", symbol: "TLP (DAI-TRAMS)", isMigrated: false, sourcePair: "Direct Liquidity Pool Deposit", targetPair: "TramsDex Native Pair", allocPoint: 0, lastRewardBlock: 11384627, accTramsPerShare: "56542234464585" },
+            { pid: 3, lpToken: "0x96d80118fe08d6d63cdf4bdd91bd56934f0e9d24", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 0, lastRewardBlock: 11384627, accTramsPerShare: "175333242456299" },
+            { pid: 4, lpToken: "0xff4a27201f6d9975d19fe4c539fc6c0048da06c4", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 0, lastRewardBlock: 11384627, accTramsPerShare: "639675696355429887576" },
+            { pid: 5, lpToken: "0x22a665e4abe0930d4d7f9241b101fc2f7d776b40", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 0, lastRewardBlock: 11384627, accTramsPerShare: "26487637051700" },
+            { pid: 6, lpToken: "0xbe88e94e3e3f97f5d173f55aefc656d874e0c2a9", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 200, lastRewardBlock: 11871722, accTramsPerShare: "6381656513601808257674" },
+            { pid: 7, lpToken: "0x6d437d658bfa33342d48f2c234e7ed9e8154f3f8", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 220, lastRewardBlock: 11885839, accTramsPerShare: "5213488683817766" },
+            { pid: 8, lpToken: "0xc225eb41f7cb8fd9e826b8558eadc14995970ba0", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 100, lastRewardBlock: 11871768, accTramsPerShare: "76164851001724527" },
+            { pid: 9, lpToken: "0xfc3e97dd4c4bc06329fded000a7605c372250f6d", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 200, lastRewardBlock: 11871792, accTramsPerShare: "14065364417185604" },
+            { pid: 10, lpToken: "0x3b7ab9c3af6950137eb17a5af4101e7cbe31782d", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 100, lastRewardBlock: 11871809, accTramsPerShare: "22640805735282552" },
+            { pid: 11, lpToken: "0x5be84cc0b59b50ede98265008ab8665c4b70bbc5", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 100, lastRewardBlock: 11886110, accTramsPerShare: "2959894392429202" },
+            { pid: 12, lpToken: "0x30f5c59099c90bd90f764eacfbee807d29955c82", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 200, lastRewardBlock: 11871840, accTramsPerShare: "2666773904658684403797398" },
+            { pid: 13, lpToken: "0xc17f51a8213c1017e502abd61bb31be228a9f383", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 80, lastRewardBlock: 11891494, accTramsPerShare: "29406377579575080" },
+            { pid: 14, lpToken: "0xf82e6314e66a79fe8af89818ea2dfed7ea309b43", name: "Migrated Token Pool", symbol: "mTRAMS", isMigrated: true, sourcePair: "Uniswap V2 LP", targetPair: "TramsDex Native mTRAMS", allocPoint: 100, lastRewardBlock: 11871855, accTramsPerShare: "42690594097848799609281343038" }
+        ];
+
+        let currentPools = JSON.parse(JSON.stringify(PRE_CACHED_POOLS));
+        let activeFilter = 'all';
+        let isLiveMode = false;
+
+        // Custom Ethers RPC parameters
+        const TRAMS_MASTER_ABI = [
+            "function poolLength() view returns (uint256)",
+            "function poolInfo(uint256) view returns (address, uint256, uint256, uint256)",
+            "function totalAllocPoint() view returns (uint256)"
+        ];
+
+        // --- Theme handling (light / dark) ---
+        function applyTheme(theme) {
+            const isLight = theme === 'light';
+            document.documentElement.classList.toggle('dark', !isLight);
+            try { localStorage.setItem('tramsdex-theme', theme); } catch (e) {}
+            const icon = document.getElementById('theme-icon');
+            const label = document.getElementById('theme-label');
+            if (icon) icon.className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+            if (label) label.innerText = isLight ? 'Light' : 'Dark';
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        }
+
+        function initTheme() {
+            let theme = 'dark';
+            try {
+                theme = localStorage.getItem('tramsdex-theme') || (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            } catch (e) {
+                theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            }
+            applyTheme(theme);
+        }
+
+        // Set Filter View
+        function setFilter(filter) {
+            activeFilter = filter;
+            ['all', 'active', 'migrated', 'inactive'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (f === filter) {
+                    btn.className = "px-4 py-2 bg-trams-600 hover:bg-trams-500 text-white text-xs font-bold rounded-xl transition duration-300 shadow-md shadow-trams-600/10";
+                } else {
+                    btn.className = "px-4 py-2 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-xs font-bold rounded-xl transition duration-300";
+                }
+            });
+            renderPools();
+        }
+
+        // Render Pools Grid Cards
+        function renderPools() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const grid = document.getElementById('pools-grid');
+            grid.innerHTML = '';
+
+            const totalAlloc = currentPools.reduce((acc, p) => acc + p.allocPoint, 0);
+
+            // Update stats panels dynamically
+            document.getElementById('stat-total-pools').innerText = currentPools.length;
+            document.getElementById('stat-total-alloc').innerText = totalAlloc.toLocaleString();
+            document.getElementById('stat-migrated-pools').innerHTML = `${currentPools.filter(p => p.isMigrated).length} <span class="text-xs font-normal text-gray-500">/ ${currentPools.length}</span>`;
+            document.getElementById('stat-reward-pools').innerHTML = `${currentPools.filter(p => p.allocPoint > 0).length} <span class="text-xs font-normal text-gray-500">/ ${currentPools.length}</span>`;
+
+            const filtered = currentPools.filter(pool => {
+                // Apply filters
+                if (activeFilter === 'active' && pool.allocPoint === 0) return false;
+                if (activeFilter === 'inactive' && pool.allocPoint > 0) return false;
+                if (activeFilter === 'migrated' && !pool.isMigrated) return false;
+
+                // Apply Search
+                if (query) {
+                    const matchesPid = pool.pid.toString() === query;
+                    const matchesSymbol = pool.symbol.toLowerCase().includes(query);
+                    const matchesName = pool.name.toLowerCase().includes(query);
+                    const matchesAddr = pool.lpToken.toLowerCase().includes(query);
+                    return matchesPid || matchesSymbol || matchesName || matchesAddr;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-gray-500 bg-white/60 dark:bg-gray-950/40 border border-gray-200 dark:border-gray-900 border-dashed rounded-2xl shadow-inner">
+                        <i class="fa-regular fa-folder-open text-4xl mb-3 text-gray-400 dark:text-gray-600"></i>
+                        <p class="font-semibold text-gray-600 dark:text-gray-400">No matching pools found</p>
+                        <p class="text-xs text-gray-500 mt-1">Try another filter or clean search parameter query.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(pool => {
+                const pct = totalAlloc > 0 ? (pool.allocPoint / totalAlloc * 100).toFixed(2) : '0.00';
+                const cardClass = pool.allocPoint > 0 ? 'border-trams-200 dark:border-trams-950 hover:border-trams-400 dark:hover:border-trams-500/50 shadow-trams-100 dark:shadow-trams-950/20' : 'border-gray-200 dark:border-gray-900 hover:border-gray-300 dark:hover:border-gray-800';
+                
+                const cardHtml = `
+                    <div onclick="openModal(${pool.pid})" class="bg-white dark:bg-gray-950/40 backdrop-blur-md border ${cardClass} rounded-2xl p-6 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-200 dark:hover:shadow-black/40 flex flex-col justify-between h-72 group relative overflow-hidden shadow-lg shadow-gray-200/40 dark:shadow-black/20">
+                        
+                        <!-- Glowing effect on active rewards hover -->
+                        ${pool.allocPoint > 0 ? `<div class="absolute inset-0 bg-gradient-to-tr from-trams-100 dark:from-trams-950/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 pointer-events-none"></div>` : ''}
+
+                        <div>
+                            <!-- Badge and status tag -->
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-800">PID ${pool.pid}</span>
+                                ${pool.allocPoint > 0 ? 
+                                    `<span class="text-[10px] font-bold text-trams-600 dark:text-trams-400 bg-trams-50 dark:bg-trams-950/40 border border-trams-200 dark:border-trams-900/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><span class="h-1.5 w-1.5 bg-trams-500 rounded-full animate-ping"></span>Earning</span>` :
+                                    `<span class="text-[10px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-900 px-2.5 py-0.5 rounded-full uppercase tracking-wider">Inactive</span>`
+                                }
+                            </div>
+
+                            <!-- Title -->
+                            <h3 class="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2 mt-1">
+                                <i class="fa-solid fa-ticket ${pool.allocPoint > 0 ? 'text-trams-500 animate-pulse' : 'text-gray-400 dark:text-gray-500'} text-lg"></i>
+                                ${pool.symbol}
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-semibold">${pool.name}</p>
+
+                            <!-- Parameters -->
+                            <div class="grid grid-cols-2 gap-4 mt-6 border-t border-gray-100 dark:border-gray-900/60 pt-4">
+                                <div>
+                                    <span class="text-[9px] uppercase font-bold text-gray-500 tracking-wider block">Alloc Points</span>
+                                    <span class="text-sm font-black text-gray-900 dark:text-gray-200 mt-0.5 block">${pool.allocPoint.toLocaleString()} <span class="text-[10px] text-trams-600 dark:text-trams-500 font-bold">(${pct}%)</span></span>
+                                </div>
+                                <div>
+                                    <span class="text-[9px] uppercase font-bold text-gray-500 tracking-wider block">Reward Block</span>
+                                    <span class="text-sm font-bold text-gray-900 dark:text-gray-200 mt-0.5 block">${pool.lastRewardBlock.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer -->
+                        <div class="border-t border-gray-100 dark:border-gray-900/60 pt-4 mt-4 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 font-medium">
+                                <i class="fa-solid ${pool.isMigrated ? 'fa-truck-ramp-box text-emerald-600 dark:text-emerald-400' : 'fa-house-lock text-trams-500'} text-xs"></i>
+                                ${pool.isMigrated ? 'Migrated LP Token' : 'Native Genesis Pair'}
+                            </span>
+                            <span class="text-xs text-trams-600 dark:text-trams-500 group-hover:translate-x-1 transition-transform duration-300 flex items-center gap-1 font-bold">
+                                Details <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </span>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
+        }
+
+        // Modal Triggers
+        function openModal(pid) {
+            const pool = currentPools.find(p => p.pid === pid);
+            if (!pool) return;
+
+            const totalAlloc = currentPools.reduce((acc, p) => acc + p.allocPoint, 0);
+            const pct = totalAlloc > 0 ? (pool.allocPoint / totalAlloc * 100).toFixed(2) : '0.00';
+
+            document.getElementById('modal-title').innerHTML = `<i class="fa-solid fa-ticket text-trams-500"></i> ${pool.symbol}`;
+            document.getElementById('modal-subtitle').innerText = `Pool PID ${pool.pid} Profile`;
+            
+            // Visual Migration timelines
+            document.getElementById('modal-src').innerHTML = `<i class="fa-solid fa-piggy-bank text-gray-400 dark:text-gray-400"></i> ${pool.sourcePair}`;
+            document.getElementById('modal-dst').innerHTML = `<i class="fa-solid fa-fire text-trams-600 dark:text-trams-500"></i> ${pool.targetPair}`;
+            
+            // Address mapping
+            const shortAddr = pool.lpToken.slice(0, 10) + '...' + pool.lpToken.slice(-8);
+            document.getElementById('modal-lp-addr').innerHTML = `${shortAddr} <i class="fa-regular fa-copy text-[10px] text-gray-500 group-hover:text-trams-500"></i>`;
+            document.getElementById('modal-lp-addr').dataset.address = pool.lpToken;
+            document.getElementById('modal-etherscan-link').href = `https://etherscan.io/address/${pool.lpToken}`;
+            
+            // Metadata
+            document.getElementById('modal-alloc').innerHTML = `${pool.allocPoint.toLocaleString()} AP <span class="text-xs text-trams-600 dark:text-trams-500 font-bold">(${pct}%)</span>`;
+            document.getElementById('modal-acc-trams').innerText = pool.accTramsPerShare;
+            document.getElementById('modal-last-block').innerText = pool.lastRewardBlock.toLocaleString();
+
+            // Clear and reset reserves UI
+            document.getElementById('modal-legacy-reserves').innerHTML = '<span class="text-gray-500 text-[10px]">Connect live to sync</span>';
+            document.getElementById('modal-current-reserves').innerHTML = '<span class="text-gray-500 text-[10px]">Connect live to sync</span>';
+            document.getElementById('modal-assets-loading').classList.add('hidden');
+
+            if (isLiveMode) {
+                document.getElementById('modal-assets-loading').classList.remove('hidden');
+                document.getElementById('modal-legacy-reserves').innerHTML = '<span class="text-gray-500 text-[10px]">Loading on-chain data...</span>';
+                document.getElementById('modal-current-reserves').innerHTML = '<span class="text-gray-500 text-[10px]">Loading on-chain data...</span>';
+
+                const FACTORY_ABI = ["function getPair(address, address) view returns (address)"];
+                const PAIR_ABI = [
+                    "function token0() view returns (address)",
+                    "function token1() view returns (address)",
+                    "function getReserves() view returns (uint112, uint112, uint32)"
+                ];
+                const ERC20_ABI = [
+                    "function decimals() view returns (uint8)",
+                    "function symbol() view returns (string)",
+                    "function balanceOf(address) view returns (uint256)"
+                ];
+                const UNISWAP_FACTORY = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
+
+                (async () => {
+                    try {
+                        const provider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC_URL);
+                        const lpContract = new ethers.Contract(pool.lpToken, PAIR_ABI, provider);
+                        
+                        // Try calling token0 to check if it's a pair
+                        let token0, token1, isPair = false;
+                        try {
+                            token0 = await lpContract.token0();
+                            token1 = await lpContract.token1();
+                            isPair = true;
+                        } catch(e) {
+                            isPair = false;
+                        }
+                        
+                        if (isPair) {
+                            const t0Contract = new ethers.Contract(token0, ERC20_ABI, provider);
+                            const t1Contract = new ethers.Contract(token1, ERC20_ABI, provider);
+                            
+                            const [sym0, dec0, sym1, dec1] = await Promise.all([
+                                t0Contract.symbol(),
+                                t0Contract.decimals(),
+                                t1Contract.symbol(),
+                                t1Contract.decimals()
+                            ]);
+                            
+                            // Fetch TramsDex reserves
+                            const [res0, res1] = await lpContract.getReserves();
+                            const val0 = ethers.utils.formatUnits(res0, dec0);
+                            const val1 = ethers.utils.formatUnits(res1, dec1);
+                            
+                            // Get Uniswap Legacy Pair Address
+                            const factoryContract = new ethers.Contract(UNISWAP_FACTORY, FACTORY_ABI, provider);
+                            const legacyPairAddr = await factoryContract.getPair(token0, token1);
+                            
+                            let legacyRes0 = "0.0", legacyRes1 = "0.0";
+                            if (legacyPairAddr !== ethers.constants.AddressZero) {
+                                const legacyPairContract = new ethers.Contract(legacyPairAddr, PAIR_ABI, provider);
+                                try {
+                                    const [lRes0, lRes1] = await legacyPairContract.getReserves();
+                                    legacyRes0 = ethers.utils.formatUnits(lRes0, dec0);
+                                    legacyRes1 = ethers.utils.formatUnits(lRes1, dec1);
+                                } catch (e) {
+                                    console.log("Legacy reserves fetch failed:", e);
+                                }
+                            }
+                            
+                            const formatVal = (v) => Number(v).toLocaleString(undefined, {maximumFractionDigits: 4});
+                            
+                            document.getElementById('modal-legacy-reserves').innerHTML = `
+                                <div class="flex justify-between"><span>${sym0}:</span> <span class="font-bold text-gray-900 dark:text-gray-200">${formatVal(legacyRes0)}</span></div>
+                                <div class="flex justify-between mt-1.5"><span>${sym1}:</span> <span class="font-bold text-gray-900 dark:text-gray-200">${formatVal(legacyRes1)}</span></div>
+                                <div class="text-[8px] text-gray-500 font-mono font-normal mt-2 select-all overflow-hidden text-ellipsis">${legacyPairAddr}</div>
+                            `;
+                            document.getElementById('modal-current-reserves').innerHTML = `
+                                <div class="flex justify-between"><span>${sym0}:</span> <span class="font-bold text-trams-600 dark:text-trams-500">${formatVal(val0)}</span></div>
+                                <div class="flex justify-between mt-1.5"><span>${sym1}:</span> <span class="font-bold text-trams-600 dark:text-trams-500">${formatVal(val1)}</span></div>
+                                <div class="text-[8px] text-trams-600/60 dark:text-trams-500/60 font-mono font-normal mt-2 select-all overflow-hidden text-ellipsis">${pool.lpToken}</div>
+                            `;
+                        } else {
+                            // Single Asset Staking Pool
+                            const tokenContract = new ethers.Contract(pool.lpToken, ERC20_ABI, provider);
+                            const [sym, dec] = await Promise.all([
+                                tokenContract.symbol(),
+                                tokenContract.decimals()
+                            ]);
+                            
+                            const stakedBalance = await tokenContract.balanceOf(TRAMS_MASTER_ADDRESS);
+                            const formattedStaked = ethers.utils.formatUnits(stakedBalance, dec);
+                            
+                            const formatVal = (v) => Number(v).toLocaleString(undefined, {maximumFractionDigits: 2});
+                            
+                            document.getElementById('modal-legacy-reserves').innerHTML = `
+                                <div class="flex flex-col text-center py-2">
+                                    <span class="text-[10px] text-gray-500 font-normal">Legacy Asset</span>
+                                    <span class="text-sm font-extrabold text-gray-700 dark:text-gray-300 mt-1">${sym}</span>
+                                    <span class="text-[8px] text-gray-500 font-normal mt-1.5">Migrated to New Farm</span>
+                                </div>
+                            `;
+                            document.getElementById('modal-current-reserves').innerHTML = `
+                                <div class="flex flex-col text-center py-2">
+                                    <span class="text-[10px] text-trams-600 dark:text-trams-400 font-normal">Total Staked</span>
+                                    <span class="text-sm font-extrabold text-trams-600 dark:text-trams-500 mt-1">${formatVal(formattedStaked)}</span>
+                                    <span class="text-[8px] text-trams-600/60 dark:text-trams-500/60 font-mono mt-1.5">${sym} in TramsMaster</span>
+                                </div>
+                            `;
+                        }
+                    } catch(err) {
+                        console.error(err);
+                        document.getElementById('modal-legacy-reserves').innerHTML = '<span class="text-rose-500 text-[10px]">Error loading live assets</span>';
+                        document.getElementById('modal-current-reserves').innerHTML = '<span class="text-rose-500 text-[10px]">Error loading live assets</span>';
+                    } finally {
+                        document.getElementById('modal-assets-loading').classList.add('hidden');
+                    }
+                })();
+            } else {
+                // Pre-cached local static fallback data
+                if (pool.symbol.includes("DAI-TRAMS")) {
+                    document.getElementById('modal-legacy-reserves').innerHTML = `
+                        <div class="flex justify-between"><span>DAI:</span> <span class="font-bold text-gray-500 dark:text-gray-400">0</span></div>
+                        <div class="flex justify-between mt-1"><span>TRAMS:</span> <span class="font-bold text-gray-500 dark:text-gray-400">0</span></div>
+                        <div class="text-[8px] text-gray-500 font-mono font-normal mt-2">0xa478c2975ab1ea89e8196811f51a7b7ade33eb11</div>
+                    `;
+                    document.getElementById('modal-current-reserves').innerHTML = `
+                        <div class="flex justify-between"><span>DAI:</span> <span class="font-bold text-gray-500 dark:text-gray-400">0</span></div>
+                        <div class="flex justify-between mt-1"><span>TRAMS:</span> <span class="font-bold text-gray-500 dark:text-gray-400">0</span></div>
+                        <div class="text-[8px] text-trams-600/60 dark:text-trams-500/60 font-mono font-normal mt-2">0xd3bf876c1497a2b1285bbf881f0f3bcdc4c5b4fc</div>
+                    `;
+                } else {
+                    document.getElementById('modal-legacy-reserves').innerHTML = `
+                        <div class="flex flex-col text-center py-1">
+                            <span class="text-[10px] text-gray-500 font-normal">Legacy Asset</span>
+                            <span class="text-sm font-extrabold text-gray-700 dark:text-gray-300 mt-0.5">mTRAMS</span>
+                            <span class="text-[8px] text-gray-500 font-normal mt-1">Migrated to New Farm</span>
+                        </div>
+                    `;
+                    document.getElementById('modal-current-reserves').innerHTML = `
+                        <div class="flex flex-col text-center py-1">
+                            <span class="text-[10px] text-trams-600 dark:text-trams-400 font-normal">Total Staked</span>
+                            <span class="text-sm font-extrabold text-trams-600 dark:text-trams-500 mt-0.5">Live On-Chain</span>
+                            <span class="text-[8px] text-gray-500 font-normal mt-1">Connect to Go Live</span>
+                        </div>
+                    `;
+                }
+            }
+
+            const modal = document.getElementById('pool-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.querySelector('.transform').classList.remove('scale-95');
+                modal.querySelector('.transform').classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('pool-modal');
+            modal.querySelector('.transform').classList.remove('scale-100');
+            modal.querySelector('.transform').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 150);
+        }
+
+        function copyAddress() {
+            const addr = document.getElementById('modal-lp-addr').dataset.address;
+            navigator.clipboard.writeText(addr);
+            alert(`Copied LP Token Contract address to clipboard!\n${addr}`);
+        }
+
+        // Close modal when clicking outside target card
+        window.onclick = function(event) {
+            const modal = document.getElementById('pool-modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Live Mode Synchronization Handler
+        async function toggleLiveMode() {
+            if (isLiveMode) {
+                // Switch back to fallback pre-cached local database
+                isLiveMode = false;
+                currentPools = JSON.parse(JSON.stringify(PRE_CACHED_POOLS));
+                updateStatusIndicator(false);
+                renderPools();
+                return;
+            }
+
+            try {
+                updateStatusText("Connecting...", "amber");
+                const provider = new ethers.providers.JsonRpcProvider(PUBLIC_RPC_URL);
+                const contract = new ethers.Contract(TRAMS_MASTER_ADDRESS, TRAMS_MASTER_ABI, provider);
+
+                // Quick Connection Check
+                const blockNum = await provider.getBlockNumber();
+                updateStatusText("Syncing Pools...", "amber");
+
+                const length = await contract.poolLength();
+                const numPools = length.toNumber();
+
+                const poolPromises = [];
+                for (let i = 0; i < numPools; i++) {
+                    poolPromises.push(contract.poolInfo(i));
+                }
+                
+                const infos = await Promise.all(poolPromises);
+                
+                // Map results back to currentPools dynamically
+                for (let i = 0; i < numPools; i++) {
+                    const info = infos[i];
+                    const lpToken = info[0].toLowerCase();
+                    const allocPoint = info[1].toNumber();
+                    const lastRewardBlock = info[2].toNumber();
+                    const accTramsPerShare = info[3].toString();
+
+                    const match = currentPools.find(p => p.pid === i);
+                    if (match) {
+                        match.allocPoint = allocPoint;
+                        match.lastRewardBlock = lastRewardBlock;
+                        match.accTramsPerShare = accTramsPerShare;
+                    } else {
+                        // Insert new dynamic pool discovered
+                        currentPools.push({
+                            pid: i,
+                            lpToken: lpToken,
+                            name: "Discovered Pool",
+                            symbol: "mTRAMS",
+                            isMigrated: true,
+                            sourcePair: "Uniswap V2 LP",
+                            targetPair: "TramsDex Pool",
+                            allocPoint: allocPoint,
+                            lastRewardBlock: lastRewardBlock,
+                            accTramsPerShare: accTramsPerShare
+                        });
+                    }
+                }
+
+                isLiveMode = true;
+                updateStatusIndicator(true, `Live (Block #${blockNum.toLocaleString()})`);
+                renderPools();
+            } catch (err) {
+                console.error(err);
+                alert(`On-chain RPC connection failed:\n${err.message}\n\nReverting to Offline Cache database.`);
+                updateStatusIndicator(false);
+            }
+        }
+
+        function updateStatusText(text) {
+            document.getElementById('network-text').innerText = text;
+        }
+
+        function updateStatusIndicator(live, customText = "") {
+            const ping = document.getElementById('status-ping');
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('network-text');
+            const btn = document.getElementById('toggle-live-btn');
+
+            if (live) {
+                ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                dot.className = "relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500";
+                text.innerText = customText || "Live Mainnet";
+                text.className = "text-sm font-bold text-emerald-600 dark:text-emerald-400";
+                btn.innerHTML = `<i class="fa-solid fa-plug-circle-xmark"></i> Disconnect`;
+                btn.className = "ml-2 px-3.5 py-1.5 bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 active:scale-95 transition-all text-xs font-bold rounded-xl text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-800";
+            } else {
+                ping.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+                dot.className = "relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500";
+                text.innerText = "Offline / Static Cache";
+                text.className = "text-sm font-bold text-gray-600 dark:text-gray-300";
+                btn.innerHTML = `<i class="fa-solid fa-wifi"></i> Go Live`;
+                btn.className = "ml-2 px-3.5 py-1.5 bg-trams-600 hover:bg-trams-500 active:scale-95 hover:shadow-lg hover:shadow-trams-600/20 transition-all text-xs font-bold rounded-xl text-white";
+            }
+        }
+
+        // Render initially
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            renderPools();
+        });
+    </script>
+</body>
+</html>
